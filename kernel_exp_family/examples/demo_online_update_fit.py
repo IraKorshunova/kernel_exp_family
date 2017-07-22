@@ -4,7 +4,6 @@ from kernel_exp_family.examples.tools import pdf_grid, visualise_array
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 if __name__ == '__main__':
     """
     Simple example of the on-line fitting abilities of the finite dimensional
@@ -15,10 +14,10 @@ if __name__ == '__main__':
     """
     N = 50
     D = 2
-    
+
     # fit model to samples from a wrong Gaussian, to see updates later
     X = np.random.randn(N, D) * 10
-    
+
     # arbitrary choice of parameters here
     # note that m is set to N in order to call update_fit immediately,
     # as throws an error if called with less data
@@ -29,7 +28,7 @@ if __name__ == '__main__':
 
     # only for plotting
     all_data = []
-    
+
     # plotting grid
     width = 6
     Xs = np.linspace(-width, width, 50)
@@ -42,7 +41,7 @@ if __name__ == '__main__':
     _, G_true = pdf_grid(Xs, Ys, ground_truth())
     visualise_array(Xs, Ys, G_true)
     plt.title("Gradient norm, ground truth")
-    
+
     # plot initial fit
     fig_count += 1
     plt.subplot(3, 3, fig_count)
@@ -54,14 +53,13 @@ if __name__ == '__main__':
     # online updates of the model
     for i in range(7):
         X = np.random.randn(3 * (i + 1), est.D)
-        
+
         # only for plotting
         all_data.append(X)
-        
+
         # API for updating estimator
         est.update_fit(X)
-        
-            
+
         # visualise current fit
         fig_count += 1
         plt.subplot(3, 3, fig_count)
@@ -69,5 +67,5 @@ if __name__ == '__main__':
         visualise_array(Xs, Ys, G, np.vstack(all_data))
         plt.title("Gradient norm, N=%d" % est.n)
         plt.tight_layout()
-        
+
     plt.show()

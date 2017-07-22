@@ -14,11 +14,13 @@ def get_KernelExpFiniteGaussian_instance(D):
     m = 100
     return KernelExpFiniteGaussian(sigma, lmbda, m, D)
 
+
 def get_KernelExpLiteGaussian_instance(D, N):
     # arbitrary choice of parameters here
     sigma = 1.
     lmbda = 0.01
     return KernelExpLiteGaussian(sigma, lmbda, D, N)
+
 
 def get_KernelExpLiteGaussianLowRank_instance(D, N):
     # arbitrary choice of parameters here
@@ -26,25 +28,33 @@ def get_KernelExpLiteGaussianLowRank_instance(D, N):
     lmbda = 1
     return KernelExpLiteGaussianLowRank(sigma, lmbda, D, N, eta=.1)
 
+
 def get_KernelExpFullGaussian_instance(D, N):
     # arbitrary choice of parameters here
     sigma = 5.
     lmbda = 0.01
     return KernelExpFullGaussian(sigma, lmbda, D)
 
+
 class ground_truth():
     def __init__(self):
         pass
+
     def log_pdf(self, x):
         return -0.5 * np.dot(x, x)
+
     def grad(self, x):
         return -0.5 * x
+
     def fit(self, X):
         pass
+
     def log_pdf_multiple(self, X):
         return np.array([self.log_pdf(x) for x in X])
+
     def objective(self, x):
         return 0.
+
 
 if __name__ == '__main__':
     """
@@ -56,31 +66,31 @@ if __name__ == '__main__':
     """
     N = 200
     D = 2
-    
+
     # fit model to samples from a standard Gaussian
     X = np.random.randn(N, D)
-    
+
     # estimator API object, try different estimators here
     estimators = [
-                    get_KernelExpFiniteGaussian_instance(D),
-                    get_KernelExpLiteGaussian_instance(D, N),
-                    get_KernelExpLiteGaussianLowRank_instance(D, N),
-                    get_KernelExpFullGaussian_instance(D, N),
-                    ground_truth()
-                  ]
-    
+        get_KernelExpFiniteGaussian_instance(D),
+        get_KernelExpLiteGaussian_instance(D, N),
+        get_KernelExpLiteGaussianLowRank_instance(D, N),
+        get_KernelExpFullGaussian_instance(D, N),
+        ground_truth()
+    ]
+
     for est in estimators:
         est.fit(X)
-        
+
         # main interface for log pdf and gradient
         print est.log_pdf(np.zeros(D))
         print est.log_pdf_multiple(np.random.randn(2, 2))
         print est.grad(np.zeros(D))
-        
+
         # score matching objective function (can be used for parameter tuning)
         print est.objective(X)
-        
+
         visualise_fit_2d(est, X)
         plt.suptitle("Estimated with %s" % str(est.__class__.__name__))
-    
+
     plt.show()

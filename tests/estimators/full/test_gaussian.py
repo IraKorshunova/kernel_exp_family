@@ -1,7 +1,6 @@
 from nose.tools import assert_almost_equal
 from numpy.ma.testutils import assert_close
 from numpy.testing.utils import assert_allclose
-
 from kernel_exp_family.estimators.full.develop.gaussian import build_system_loop, \
     compute_lower_right_submatrix_loop, compute_RHS_loop, log_pdf_naive, \
     grad_naive, compute_h_old_interface
@@ -48,9 +47,10 @@ def test_compute_lower_submatrix():
 
     A, _ = build_system(data, data, sigma, lmbda)
     A_vector = A[1:, 1:]
-#     A_vector = compute_lower_right_submatrix(all_hessians, data.shape[0], lmbda)
+    #     A_vector = compute_lower_right_submatrix(all_hessians, data.shape[0], lmbda)
 
     assert_close(A_loop, A_vector)
+
 
 def test_compute_rhs_vector():
     data, l, sigma, lmbda = setup()
@@ -64,6 +64,7 @@ def test_compute_rhs_vector():
 
     assert_close(rhs_vector, np.squeeze(rhs_loop.T))
 
+
 def test_log_pdf_equals_log_pdf_naive():
     N = 10
     D = 2
@@ -71,11 +72,12 @@ def test_log_pdf_equals_log_pdf_naive():
     sigma = 1.
     alpha = np.random.randn()
     beta = np.random.randn(N, D)
-    
+
     for x in np.random.randn(N, D):
         a = log_pdf(x, X, sigma, alpha, beta)
         b = log_pdf_naive(x, X, sigma, alpha, beta)
         assert_almost_equal(a, b)
+
 
 def test_grad_equals_grad_naive():
     N = 10
@@ -84,11 +86,12 @@ def test_grad_equals_grad_naive():
     sigma = 1.
     alpha = np.random.randn()
     beta = np.random.randn(N, D)
-    
+
     for x in np.random.randn(N, D):
         a = grad(x, X, sigma, alpha, beta)
         b = grad_naive(x, X, sigma, alpha, beta)
         assert_allclose(a, b)
+
 
 def test_gradient_execute():
     N = 10
@@ -98,8 +101,9 @@ def test_gradient_execute():
     sigma = 1.
     alpha = np.random.randn()
     beta = np.random.randn(N, D)
-    
+
     grad(x, X, sigma, alpha, beta)
+
 
 def test_compute_h_equals_old_interface():
     data, l, sigma, _ = setup()
@@ -108,7 +112,7 @@ def test_compute_h_equals_old_interface():
 
     reference = compute_h_old_interface(kernel_dx_dx_dy, data).reshape(-1)
     implementation = compute_h(data, data, sigma)
-    
+
     assert_close(reference, implementation)
 
 
@@ -134,22 +138,24 @@ def test_compute_objective_execute():
 
     compute_objective(X_test, X_train, sigma, alpha, beta)
 
+
 def test_build_system_custom_basis_execute():
     data, _, sigma, lmbda = setup()
     basis = np.random.randn(10, data.shape[1])
     build_system(basis, data, sigma, lmbda)
+
 
 def test_fit_custom_basis_execute():
     data, _, sigma, lmbda = setup()
     basis = np.random.randn(10, data.shape[1])
     fit(basis, data, sigma, lmbda)
 
+
 def test_fit_custom_basis_equals_full_execute():
     data, _, sigma, lmbda = setup()
     basis = data.copy()
     alpha, beta = fit(basis, data, sigma, lmbda)
     alpha2, beta2 = fit(basis, data, sigma, lmbda)
-    
+
     assert_close(alpha, alpha2)
     assert_close(beta, beta2)
-    

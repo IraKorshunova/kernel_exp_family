@@ -1,13 +1,12 @@
 from pybo import inits, recommenders, solvers, policies
 import reggie
 from reggie.means._core import Mean
-
 from kernel_exp_family.tools.log import Log
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 logger = Log.get_logger()
+
 
 class GPMean(Mean):
     """
@@ -16,6 +15,7 @@ class GPMean(Mean):
     
     Taken from dev-branch of reggie
     """
+
     def __init__(self, gp):
         super(GPMean, self).__init__()
         self._gp = gp.copy()
@@ -50,27 +50,27 @@ class BayesOptSearch(object):
         # parameter space dimensions correspond to sorted parameter bound keys
         self.param_names = np.sort(param_bounds.keys())
         self.bounds = np.array([param_bounds[k] for k in self.param_names])
-        
+
         self.initialised = False
 
     def _init_model(self, num_initial_evaluations, previous_model=None):
         logger.info("Initial fitting using %d points" % num_initial_evaluations)
-        
+
         # get initial data and some test points.
         self.X = list(inits.init_latin(self.bounds, num_initial_evaluations))
         self.Y = [self._eval(x) for x in self.X]
-        
+
         # initial values for kernel parameters, taken from pybo code
         sn2 = 1e-6
         rho = np.max(self.Y) - np.min(self.Y)
         rho = 1. if (rho < 1e-1) else rho
         ell = 0.25 * (self.bounds[:, 1] - self.bounds[:, 0])
-        
+
         if previous_model is None:
             # use data mean as GP mean
             bias = np.mean(self.Y)
             self.model = reggie.make_gp(sn2, rho, ell, bias)
-            
+
             # define priors if gp was created from scratch
             self.model.params['mean.bias'].set_prior('normal', bias, rho)
             self.model.params['like.sn2'].set_prior('horseshoe', 0.1)
@@ -82,14 +82,14 @@ class BayesOptSearch(object):
             kern = previous_model._kern
             mean = GPMean(previous_model)
             self.model = reggie.GP(like, kern, mean)
-        
+
         # initialize the MCMC inference meta-model and add data
         self.model.add_data(self.X, self.Y)
         self.model = reggie.MCMC(self.model, n=10, burn=100)
-        
+
         # best point so far
         self.xbest = recommenders.best_incumbent(self.model, self.bounds, self.X)
-        
+
         self.initialised = True
 
     def _search_domain_to_param_dict(self, x):
@@ -101,13 +101,13 @@ class BayesOptSearch(object):
                 x = np.array([x])
 
             param_dict[name] = np.exp(x[i])
-                
+
         return param_dict
-    
+
     def optimize(self, num_iter=10):
         if not self.initialised:
             self._init_model(num_initial_evaluations=self.num_initial_evaluations)
-        
+
         logger.info("Optimising %d iterations" % num_iter)
         for _ in range(num_iter):
             index = policies.EI(self.model, self.bounds, self.X)
@@ -121,49 +121,52 @@ class BayesOptSearch(object):
 
             # best point so far
             self.xbest = recommenders.best_incumbent(self.model, self.bounds, self.X)
-        
+
         return self._search_domain_to_param_dict(self.xbest)
 
     def re_initialise(self, new_data=None, num_initial_evaluations=1):
         if not self.initialised:
-            raise RuntimeError("Model needs to be optimised before re-initialisation is possible. Call optimise() method")
-        
+            raise RuntimeError(
+                "Model needs to be optimised before re-initialisation is possible. Call optimise() method")
+
         if new_data is not None:
             self.data = new_data
-        
+
         # sample a random posterior model
         previous_model = self.model._models[np.random.randint(self.model._n)]
-        
+
         # use as prior mean
         self._init_model(num_initial_evaluations=num_initial_evaluations, previous_model=previous_model)
-        
+
         return self._search_domain_to_param_dict(self.xbest)
-            
+
     def _eval(self, x):
         param_dict = self._search_domain_to_param_dict(x)
-        
+
         self.estimator.set_parameters_from_dict(param_dict)
-        
+
         # objective wants to be minimised, but Bayesian optimisation maximises
         O = -self.estimator.xvalidate_objective(self.data)
         avg = np.mean(O)
-        
+
         if self.objective_log:
             objective = np.log(avg + self.log_bound)
             if np.isnan(objective):
-                raise RuntimeError("Objective function (%f) plus log-bound (%f) was negative. Cannot take log. Increase log_bound by at least %f to resolve."
-                                   % (avg, self.log_bound, np.abs(-np.mean(O) + self.log_bound)))
+                raise RuntimeError(
+                    "Objective function (%f) plus log-bound (%f) was negative. Cannot take log. Increase log_bound by at least %f to resolve."
+                    % (avg, self.log_bound, np.abs(-np.mean(O) + self.log_bound)))
         else:
             objective = avg
-            
+
         return objective
+
 
 def plot_bayesopt_model_1d(bo):
     assert len(bo.param_bounds) == 1
-    
-    x = np.linspace(bo.bounds[0,0], bo.bounds[0,1], 100)
+
+    x = np.linspace(bo.bounds[0, 0], bo.bounds[0, 1], 100)
     mu, s2 = bo.model.predict(x[:, None])
-    
+
     plt.plot(x, mu, 'b-')
     lower = mu - 1.96 * np.sqrt(s2)
     upper = mu + 1.96 * np.sqrt(s2)

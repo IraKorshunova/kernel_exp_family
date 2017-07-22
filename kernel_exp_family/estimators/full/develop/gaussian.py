@@ -1,13 +1,13 @@
-from kernel_exp_family.kernels.develop.kernels import SE_dx_dx_dy, SE_dx_dy,\
+from kernel_exp_family.kernels.develop.kernels import SE_dx_dx_dy, SE_dx_dy, \
     SE_dx_dx_dy_dy
-from kernel_exp_family.kernels.kernels import gaussian_kernel_dx_i_dx_i_dx_j,\
+from kernel_exp_family.kernels.kernels import gaussian_kernel_dx_i_dx_i_dx_j, \
     gaussian_kernel_dx_i_dx_j, gaussian_kernel_grad, gaussian_kernel_dx_dx
 import numpy as np
 
 
 def log_pdf_naive(x, X, sigma, alpha, beta):
     N, D = X.shape
-    
+
     xi = 0
     betasum = 0
     for a in range(N):
@@ -17,29 +17,31 @@ def log_pdf_naive(x, X, sigma, alpha, beta):
         for i in range(D):
             xi += xi_grad[i] / N
             betasum += gradient_x_xa[i] * beta[a, i]
-    
+
     return alpha * xi + betasum
+
 
 def grad_naive(x, X, sigma, alpha, beta):
     N, D = X.shape
-    
+
     xi_grad = 0
     betasum_grad = 0
     for a, x_a in enumerate(X):
         xi_gradient_vec = gaussian_kernel_dx_i_dx_i_dx_j(x, x_a, sigma)
         left_arg_hessian = gaussian_kernel_dx_i_dx_j(x, x_a, sigma)
-        
+
         for i in range(D):
             xi_grad += xi_gradient_vec[i] / N
             betasum_grad += beta[a, i] * left_arg_hessian[i]
 
     return alpha * xi_grad + betasum_grad
 
+
 def compute_lower_right_submatrix_loop(kernel_dx_dy, data, lmbda):
     n, d = data.shape
     G = compute_G(kernel_dx_dy, data)
 
-    A = np.zeros( (n*d, n*d) )
+    A = np.zeros((n * d, n * d))
     for a in range(n):
         for i in range(d):
             for b in range(n):
@@ -47,6 +49,7 @@ def compute_lower_right_submatrix_loop(kernel_dx_dy, data, lmbda):
                     A[b * d + j, a * d + i] = np.sum(G[a, :, i, :] * G[:, b, :, j]) / n + lmbda * G[a, b, i, j]
 
     return A
+
 
 def compute_G(kernel_dx_dy, data):
     n, d = data.shape
@@ -73,8 +76,9 @@ def compute_RHS_loop(kernel_dx_dx_dy, data, xi_norm_2):
 
     return b
 
+
 def build_system_loop(X, sigma, lmbda):
-        # esben parametrised kernel in terms of l as exp(-||---|| / (2*l^2)
+    # esben parametrised kernel in terms of l as exp(-||---|| / (2*l^2)
     # therefore sigma = 2*(l**2)
     l = np.sqrt(np.float(sigma) / 2)
 
@@ -122,8 +126,9 @@ def compute_h_old_interface(kernel_dx_dx_dy, data):
     for b in range(n):
         for a in range(n):
             h[b, :] += np.sum(kernel_dx_dx_dy(data[a, :].reshape(-1, 1), data[b, :].reshape(-1, 1)), axis=0)
-            
+
     return h / n
+
 
 def compute_xi_norm_2_old_interface(kernel_dx_dx_dy_dy, data):
     n, _ = data.shape
@@ -133,5 +138,5 @@ def compute_xi_norm_2_old_interface(kernel_dx_dx_dy_dy, data):
             x = data[a, :].reshape(-1, 1)
             y = data[b, :].reshape(-1, 1)
             norm_2 += np.sum(kernel_dx_dx_dy_dy(x, y))
-            
+
     return norm_2 / n ** 2
