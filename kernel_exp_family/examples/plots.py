@@ -3,10 +3,12 @@ import matplotlib.pyplot as plt
 from sklearn.metrics.pairwise import pairwise_distances
 from kernel_exp_family.estimators.full.gaussian import KernelExpFullGaussian
 from kernel_exp_family.kernels.kernels import gaussian_kernel_grad, gaussian_kernel_dx_dx, gaussian_kernel
+from kernel_exp_family.estimators.estimator_oop import EstimatorBase
 
 
-class Gaussian_KDE():
-    def __init__(self, bandwidth=1.0):
+class Gaussian_KDE(EstimatorBase):
+    def __init__(self, bandwidth, D):
+        super(Gaussian_KDE, self).__init__(D)
         self.bandwidth = bandwidth
 
     def fit(self, X, y=None):
@@ -41,7 +43,7 @@ class Gaussian_KDE():
 
 def get_sigma_star(X):
     """
-    Paper says: 'sigma star is the median of pairwise distances of data'
+    From the paper: 'sigma star is the median of pairwise distances of data'
     """
     dist_matrix = pairwise_distances(X)
     idxs = np.tril_indices(n=dist_matrix.shape[0], k=-1)
@@ -49,7 +51,7 @@ def get_sigma_star(X):
     return median_dist
 
 
-def plot1():
+def plot1(cv_full=False, cv_kde=False):
     y_est1, y_est2 = [], []
     x_range = range(2, 20, 2)
     for d in x_range:
@@ -59,12 +61,32 @@ def plot1():
 
         lmbda = 0.1 * np.power(N, -1. / 3)  # from the paper
         sigma_star = get_sigma_star(X)
-        sigma = 0.8 * sigma_star  # todo: CV
 
-        bandwidth = 0.1 * sigma_star  # todo: CV
+        sigma = 0.8 * sigma_star
+        if cv_full:
+            print('CV for KernelExpFullGaussian')
+            cv_sigma_factors = [0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.2, 1.4, 1.6]
+            cv_obj = []
+            for sf in cv_sigma_factors:
+                sigma = sf * sigma_star
+                est1 = KernelExpFullGaussian(sigma, lmbda, D)
+                cv_obj.append(np.mean(est1.xvalidate_objective(X)))
+            sigma = cv_sigma_factors[np.argmin(cv_obj)] * sigma_star
+            print('sigma', sigma)
+
+        bandwidth = 0.1 * sigma_star
+        if cv_kde:
+            cv_bandwidth_factors = [0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
+            cv_obj = []
+            for sf in cv_bandwidth_factors:
+                bandwidth = sf * sigma_star
+                est2 = Gaussian_KDE(bandwidth, D)
+                cv_obj.append(np.mean(est2.xvalidate_objective(X)))
+            bandwidth = cv_bandwidth_factors[np.argmin(cv_obj)] * sigma_star
+            print('bandwidth', bandwidth)
 
         est1 = KernelExpFullGaussian(sigma, lmbda, D)
-        est2 = Gaussian_KDE(bandwidth)
+        est2 = Gaussian_KDE(bandwidth, D)
 
         est1.fit(X)
         est2.fit(X)
@@ -84,4 +106,4 @@ def plot1():
 
 
 if __name__ == '__main__':
-    plot1()
+    plot1(cv_full=False, cv_kde=True)
