@@ -161,7 +161,14 @@ class KernelExpFullGaussian(EstimatorBase):
         return log_pdf(x, self.basis, self.sigma, self.alpha, self.beta)
 
     def grad(self, x):
-        return grad(x, self.basis, self.sigma, self.alpha, self.beta)
+        if x.ndim == 1:
+            return grad(x, self.basis, self.sigma, self.alpha, self.beta)
+        else:
+            grads = []
+            for i in xrange(x.shape[0]):
+                g_i = self.grad(x[i, :])
+                grads.append(g_i)
+            return np.asarray(grads)
 
     def objective(self, X):
         assert_array_shape(X, ndim=2, dims={1: self.D})
