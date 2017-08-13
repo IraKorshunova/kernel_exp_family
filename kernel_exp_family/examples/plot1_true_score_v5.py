@@ -4,11 +4,17 @@ from kernel_exp_family.estimators.full.gaussian import KernelExpFullGaussian
 from kernel_exp_family.estimators.full.gaussian import grad as exp_full_gaussian_grad
 from kernel_exp_family.kernels.kernels import gaussian_kernel_grad, gaussian_kernel
 from kernel_exp_family.estimators.estimator_oop import EstimatorBase
-from kernel_exp_family.tools.assertions import assert_array_shape
+from kernel_exp_family.tools.assertions import assert_array_shape, assert_positive_int
 import matplotlib
+from kernel_exp_family.tools.log import SimpleLogger
+import sys
 
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
+script_name = 'plot1_true_score_v5'
+sys.stdout = SimpleLogger('%s.log' % script_name)
+sys.stderr = sys.stdout
 
 
 class Gaussian_KDE(EstimatorBase):
@@ -99,6 +105,21 @@ def get_sigma_star(X):
     return median_dist
 
 
+def gen_data_xvalidate_objective(estimator, N, d, num_folds=5):
+    assert_positive_int(num_folds)
+    O = []
+    for i in range(num_folds):
+        x_train = np.random.randn(N, d)  # not a proper CV
+        x_test = np.random.randn(N, d)
+        try:
+            estimator.fit(x_train)
+        except Exception, e:
+            print(N, d, e)
+            i -= 1
+        O.append(estimator.objective(x_test))
+    return np.mean(O)
+
+
 def plot1(cv_full=False, cv_kde=False):
     y_est1, y_est2 = [], []
     x_range = np.arange(2, 21, 2)
@@ -113,15 +134,13 @@ def plot1(cv_full=False, cv_kde=False):
         sigma = 2 * (0.8 * sigma_star) ** 2
         if cv_full:
             print('CV for KernelExpFullGaussian')
-            cv_sigma_factors = [0.001, 0.003, 0.005, 0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.2, 1.4, 1.6, 1.8, 2., 2.2,
+            cv_sigma_factors = [0.1, 0.2, 0.4, 0.6, 0.8, 1, 1.2, 1.4, 1.6, 1.8, 2., 2.2,
                                 2.4, 2.6, 2.8, 3.0, 3.2]
             cv_obj = []
             for sf in cv_sigma_factors:
                 sigma = 2 * (sf * sigma_star) ** 2
                 est1 = KernelExpFullGaussianTrue(sigma, lmbda, d)
-                obj = np.mean(est1.xvalidate_objective(X))
-                obj = np.inf if np.isnan(obj) else obj
-                cv_obj.append(obj)
+                cv_obj.append(gen_data_xvalidate_objective(est1, N, d))
                 print(sigma, cv_obj[-1])
             sigma = 2 * (cv_sigma_factors[np.argmin(cv_obj)] * sigma_star) ** 2
             print('sigma', sigma)
@@ -134,7 +153,7 @@ def plot1(cv_full=False, cv_kde=False):
             for sf in cv_bandwidth_factors:
                 bandwidth = 2 * (sf * sigma_star) ** 2
                 est2 = Gaussian_KDE(bandwidth, d)
-                cv_obj.append(np.mean(est2.xvalidate_objective(X)))
+                cv_obj.append(gen_data_xvalidate_objective(est2, N, d))
                 print(bandwidth, cv_obj[-1])
             bandwidth = 2 * (cv_bandwidth_factors[np.argmin(cv_obj)] * sigma_star) ** 2
             print('bandwidth', bandwidth)
@@ -152,12 +171,12 @@ def plot1(cv_full=False, cv_kde=False):
         print d, y_est2[-1]
         print('----------------------------------------')
 
-    np.savez('plot1_true_score', np.array(y_est1), np.array(y_est2), x_range)
+    np.savez(script_name, np.array(y_est1), np.array(y_est2), x_range)
     print('saved np arrays')
 
 
 def plot_from_npz():
-    d = np.load('plot1_true_score.npz')
+    d = np.load('%s.npz' % script_name)
     est1, est2, x = d['arr_0'], d['arr_1'], d['arr_2']
     print(x)
     print(est1)
@@ -166,7 +185,7 @@ def plot_from_npz():
     plt.plot(x, est1, 'r', marker='o', label='score match')
     plt.plot(x, est2, 'b', marker='o', label='kde')
     plt.legend()
-    plt.savefig('plot1_true_score.png', bbox_inches='tight', pad_inches=0)
+    plt.savefig('%s.png' % script_name, bbox_inches='tight', pad_inches=0)
     print('Saved plot')
 
 

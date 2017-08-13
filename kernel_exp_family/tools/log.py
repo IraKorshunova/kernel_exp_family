@@ -1,4 +1,5 @@
 import logging
+import sys
 
 
 class Log(object):
@@ -23,3 +24,17 @@ if not Log.level_set:
                         level=level)
     Log.get_logger().info("Global logger initialised with loglevel %d" % level)
     Log.level_set = True
+
+
+class SimpleLogger(object):
+    def __init__(self, path):
+        self.terminal = sys.stdout
+        self.log = open(path, 'a')
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+
+    def flush(self):
+        # needed for python 3 compatibility
+        pass
